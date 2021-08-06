@@ -1147,13 +1147,44 @@ class TestWalletManager(TestCase):
             )
 
     @patch("electrum_gui.common.wallet.manager.provider_manager")
+    @patch("electrum_gui.common.wallet.manager.secret_manager")
+    def test_sign_message__software(self, fake_secret_manager, fake_provider_manager):
+        wallet = wallet_daos.wallet.create_wallet("testing", wallet_data.WalletType.SOFTWARE_PRIMARY, "eth")
+        account = wallet_daos.account.create_account(wallet.id, "eth", "my_address", pubkey_id=111)
+        wallet_daos.asset.create_asset(wallet.id, account.id, "eth", "eth_usdt")
+
+        fake_signer = Mock()
+        fake_secret_manager.get_signer.return_value = fake_signer
+        fake_provider_manager.sign_message.return_value = "fake_signature"
+
+        self.assertEqual("fake_signature", wallet_manager.sign_message(wallet.id, "Hello OneKey", self.password))
+        fake_secret_manager.get_signer.assert_called_once_with(self.password, 111)
+        fake_provider_manager.sign_message.assert_called_once_with("eth", "Hello OneKey", fake_signer)
+
+    @patch("electrum_gui.common.wallet.manager.provider_manager")
     def test_verify_message__hardware(self, fake_provider_manager):
         fake_provider_manager.hardware_verify_message.return_value = True
+        fake_provider_manager.verify_address.return_value = Mock(normalized_address="fake_address")
 
         self.assertEqual(
             True,
             wallet_manager.verify_message("eth", "fake_address", "Hello OneKey", "fake_signature", "fake_device_path"),
         )
+        fake_provider_manager.verify_address.assert_called_once_with("eth", "fake_address")
         fake_provider_manager.hardware_verify_message.assert_called_once_with(
             "eth", "fake_device_path", "fake_address", "Hello OneKey", "fake_signature"
+        )
+
+    @patch("electrum_gui.common.wallet.manager.provider_manager")
+    def test_verify_message__software(self, fake_provider_manager):
+        fake_provider_manager.verify_message.return_value = True
+        fake_provider_manager.verify_address.return_value = Mock(normalized_address="fake_address")
+
+        self.assertEqual(
+            True,
+            wallet_manager.verify_message("eth", "fake_address", "Hello OneKey", "fake_signature"),
+        )
+        fake_provider_manager.verify_address.assert_called_once_with("eth", "fake_address")
+        fake_provider_manager.verify_message.assert_called_once_with(
+            "eth", "fake_address", "Hello OneKey", "fake_signature"
         )

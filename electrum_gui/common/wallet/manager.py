@@ -992,7 +992,9 @@ def sign_message(
         raise exceptions.IllegalWalletOperation("Watchonly wallet can not sign message")
     elif data.WalletType.is_software_wallet(wallet_type):
         require(password, exceptions.IllegalWalletOperation("Require password"))
-        raise NotImplementedError("Software wallets don't support sign message now")
+        return provider_manager.sign_message(
+            wallet.chain_code, message, secret_manager.get_signer(password, account.pubkey_id)
+        )
     elif data.WalletType.is_hardware_wallet(wallet_type):
         require(hardware_device_path, exceptions.IllegalWalletOperation("Require hardware_device_path"))
         hardware_key_id = hardware_manager.get_key_id(hardware_device_path)
@@ -1007,10 +1009,12 @@ def sign_message(
 def verify_message(
     chain_code: str, address: str, message: str, signature: str, hardware_device_path: str = None
 ) -> bool:
+    address = provider_manager.verify_address(chain_code, address).normalized_address
+
     if hardware_device_path:
         return provider_manager.hardware_verify_message(chain_code, hardware_device_path, address, message, signature)
     else:
-        raise NotImplementedError("Software wallets don't support verify message now")
+        return provider_manager.verify_message(chain_code, address, message, signature)
 
 
 def confirm_address_on_hardware(wallet_id: int, hardware_device_path: str) -> str:
