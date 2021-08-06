@@ -69,10 +69,14 @@ class MutiBase(Logger):
         if not find:
             raise Exception("the xpub to be delete not in keystore")
 
-    def set_multi_wallet_info(self, path, m, n):
+    def set_multi_wallet_info(self, path, m, n, is_customer=False):
         if n == 1 and m == 1:
-            self.wallet_type = 'standard'
-            self.data['wallet_type'] = 'standard'
+            if not is_customer:
+                self.wallet_type = 'standard'
+                self.data['wallet_type'] = 'standard'
+            else:
+                self.wallet_type = 'customer_standard'
+                self.data['wallet_type'] = 'customer_standard'
         else:
             self.wallet_type = 'multisig'
             multisig_type = "%dof%d" % (m, n)
@@ -135,7 +139,7 @@ class MutiBase(Logger):
         has_xpub = isinstance(k, keystore.Xpub)
         if has_xpub:
             t1 = xpub_type(k.xpub)
-        if self.wallet_type == 'standard':
+        if self.wallet_type == 'standard' or self.wallet_type == "customer_standard":
             if has_xpub and t1 not in ['standard', 'p2wpkh', 'p2wpkh-p2sh', 'p2pkh']:
                 raise Exception(_('Wrong key type') + ' %s'%t1)
             self.keystores.append(k)
@@ -157,7 +161,7 @@ class MutiBase(Logger):
     def create_storage(self,path, password, encrypt_storage=True, storage_enc_version=None, coin='btc'):
         encrypt_keystore = any(k.may_have_password() for k in self.keystores)
 
-        if self.wallet_type == 'standard':
+        if self.wallet_type == 'standard' or self.wallet_type == "customer_standard":
             #self.data['seed_type'] = self.seed_type
             self.data['seed_type'] = 'segwit'
             keys = self.keystores[0].dump()
@@ -183,8 +187,8 @@ class MutiBase(Logger):
         # if encrypt_storage:
         #     storage.set_password(password, enc_version=storage_enc_version)
         db = WalletDB('', manual_upgrades=False)
-        if coin != 'btc':
-            self.data['wallet_type'] = '%s_standard' %coin
+        if coin != "btc" and coin != "tbtc":
+            self.data['wallet_type'] = '%s_standard' % coin
         #db.set_keystore_encryption(bool(password) and encrypt_keystore)
         for key, value in self.data.items():
             db.put(key, value)

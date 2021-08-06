@@ -520,7 +520,8 @@ class Xpub(MasterPublicKeyMixin):
     @lru_cache(maxsize=None)
     def derive_pubkey(self, for_change: int, n: int, compressed=True) -> bytes:
         for_change = int(for_change)
-        assert for_change in (0, 1)
+        # NOTE: allow customized path to specify a change level value other than 0 or 1
+        # assert for_change in (0, 1)
         xpub = self.xpub_change if for_change else self.xpub_receive
         if xpub is None:
             rootnode = self.get_bip32_node_for_xpub()

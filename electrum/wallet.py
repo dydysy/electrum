@@ -2841,6 +2841,50 @@ class Standard_Wallet(Simple_Deterministic_Wallet):
         deriv_suffix = self.get_address_index(address)
         return "%s/%d/%d" % (derivation, *deriv_suffix) if derivation is not None else ""
 
+class Customer_Wallet(Standard_Wallet):
+    wallet_type = 'customer_standard'
+
+    def __init__(self, db, storage, *, config, change_pos, index_pos):
+        self.change_pos = int(change_pos)
+        self.index_pos = int(index_pos)
+        Deterministic_Wallet.__init__(self, db, storage, config=config)
+        if self.db.get('address_index') is None:
+            self.set_address_index(self.change_pos, self.index_pos)
+
+    def set_address_index(self, change, index):
+        self.address_index = [change, index]
+        self.db.put("address_index", self.address_index)
+
+    @AddressSynchronizer.with_local_height_cached
+    def synchronize(self):
+        num_addr = self.db.num_receiving_addresses()
+        if num_addr < 1:
+            with self.lock:
+                address = self.derive_address(int(self.change_pos), self.index_pos)
+                self.db.add_customer_receiving_address(address, self.change_pos, self.index_pos)
+                self.set_address_index(self.change_pos, self.index_pos)
+                self.add_address(address)
+
+    def create_new_address(self, for_change: bool = False):
+        pass
+
+    @classmethod
+    def _from_keystore(cls, coin: str, config: SimpleConfig, keystore: KeyStore):
+        db = WalletDB("", manual_upgrades=False)
+        db.put("keystore", keystore.dump())
+        wallet = cls(db, None, config=config)
+        wallet.coin = coin
+        return wallet
+
+    def pubkeys_to_address(self, pubkeys):
+        pubkey = pubkeys[0]
+        return bitcoin.pubkey_to_address(self.txin_type, pubkey)
+
+    def get_derivation_path(self, address):
+        derivation = self.keystore.get_derivation_prefix()
+        deriv_suffix = self.get_address_index(address)
+        return "%s/%d/%d" % (derivation, *deriv_suffix) if derivation is not None else ""
+
 class Multisig_Wallet(Deterministic_Wallet):
     # generic m of n
 
@@ -2954,6 +2998,7 @@ def register_wallet_type(category):
 
 wallet_constructors = {
     'standard': Standard_Wallet,
+    'customer_standard': Customer_Wallet,
     'old': Standard_Wallet,
     'xpub': Standard_Wallet,
     'imported': Imported_Wallet

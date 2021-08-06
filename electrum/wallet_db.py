@@ -1090,6 +1090,12 @@ class WalletDB(JsonDB):
         self._addr_to_addr_index[addr] = (0, index)
         self.receiving_addresses.append(addr)
 
+    @modifier
+    def add_customer_receiving_address(self, addr: str, change=None, index=None) -> None:
+        assert isinstance(addr, str)
+        self._addr_to_addr_index[addr] = (change, index)
+        self.receiving_addresses.append(addr)
+
     @locked
     def get_address_index(self, address: str) -> Optional[Sequence[int]]:
         assert isinstance(address, str)
@@ -1135,7 +1141,11 @@ class WalletDB(JsonDB):
             for i, addr in enumerate(self.change_addresses):
                 self._addr_to_addr_index[addr] = (1, i)
 
-            if coin == "standard":
+            if coin == "customer":
+                if self.receiving_addresses:
+                    change, index = self.data.get("address_index", [0, 0])
+                    self._addr_to_addr_index[self.receiving_addresses[0]] = (change, index)
+            elif coin == "standard":
                 for i, addr in enumerate(self.receiving_addresses):
                     self._addr_to_addr_index[addr] = (0, i)
             else:
