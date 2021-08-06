@@ -1,4 +1,5 @@
 import abc
+import logging
 from typing import Dict
 
 from eth_account._utils import transactions as eth_account_transactions  # noqa
@@ -8,7 +9,20 @@ from electrum_gui.common.basic import bip44
 from electrum_gui.common.basic.functional.require import require
 from electrum_gui.common.hardware import interfaces as hardware_interfaces
 from electrum_gui.common.provider import data, interfaces
+from electrum_gui.common.provider.chains.eth.sdk import message as message_sdk
 from electrum_gui.common.provider.chains.eth.sdk import utils
+
+logger = logging.getLogger("app.chain")
+
+
+def _verify_message_for_hardware(message):
+    if utils.is_hexstr(message):
+        logger.warning(
+            "This device will treat this message as a personal message. "
+            "Maybe you want to use this message as a message hash?"
+        )
+    else:
+        require(not message_sdk.is_typed_data_message(message), "Not supported on this device")
 
 
 class ETHHardwareMixin(interfaces.HardwareSupportingMixin, abc.ABC):
@@ -79,6 +93,7 @@ class ETHHardwareMixin(interfaces.HardwareSupportingMixin, abc.ABC):
         message: str,
         signer_bip44_path: bip44.BIP44Path,
     ) -> str:
+        _verify_message_for_hardware(message)
         return utils.add_0x_prefix(
             trezor_ethereum.sign_message(
                 hardware_client,
@@ -94,6 +109,7 @@ class ETHHardwareMixin(interfaces.HardwareSupportingMixin, abc.ABC):
         message: str,
         signature: str,
     ) -> bool:
+        _verify_message_for_hardware(message)
         signature = bytes.fromhex(utils.remove_0x_prefix(signature))
 
         return trezor_ethereum.verify_message(

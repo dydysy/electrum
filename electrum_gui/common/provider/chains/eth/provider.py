@@ -6,7 +6,7 @@ import eth_keys
 
 from electrum_gui.common.basic.functional.require import require
 from electrum_gui.common.provider import data, interfaces
-from electrum_gui.common.provider.chains.eth import Geth, hardware_mixin
+from electrum_gui.common.provider.chains.eth import Geth, hardware_mixin, message_mixin
 from electrum_gui.common.provider.chains.eth.sdk import utils
 from electrum_gui.common.secret import interfaces as secret_interfaces
 
@@ -20,7 +20,7 @@ class _EthKey(object):
         return eth_keys.keys.Signature(sig + bytes([rec_id]))
 
 
-class ETHProvider(interfaces.ProviderInterface, hardware_mixin.ETHHardwareMixin):
+class ETHProvider(interfaces.ProviderInterface, hardware_mixin.ETHHardwareMixin, message_mixin.ETHMessageMixin):
     def verify_address(self, address: str) -> data.AddressValidation:
         is_valid = utils.is_address(address)
         normalized_address, display_address = (
