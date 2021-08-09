@@ -248,34 +248,37 @@ class Abstract_Eth_Wallet(abc.ABC):
         return eth_keys.keys.PublicKey(bytes.fromhex(public_key)).to_checksum_address()
 
     def get_all_balance(self) -> Tuple[decimal.Decimal, Dict]:
-        if (
-            self._total_balance.get("time")
-            and time.time() - self._total_balance["time"] <= 10  # Only cache for 10s
-        ):
-            return (
-                self._total_balance["balance_info"][0],
-                self._total_balance["balance_info"][1].copy()
-            )
+        _cached_main_balance = 0
+        _cached_erc_balances = {}
+
+        if self._total_balance.get("time") is not None:
+            _cached_main_balance = self._total_balance["balance_info"][0]
+            _cached_erc_balances = self._total_balance["balance_info"][1]
+
+            if time.time() - self._total_balance["time"] <= 10:
+                return _cached_main_balance, _cached_erc_balances.copy()
 
         chain_code = self.coin
-        checksum_address = eth_utils.to_checksum_address(self.get_addresses()[0])
+        address = self.get_addresses()[0]
         try:
-            raw_main_balance = provider_manager.get_balance(chain_code, checksum_address)
+            raw_main_balance = provider_manager.get_balance(chain_code, address)
         except Exception:
             _logger.error(
                 "Failed to get balance for main coin of chain %s address %s",
                 chain_code,
-                checksum_address
+                address
             )
-            raw_main_balance = 0
-        main_balance = decimal.Decimal(eth_utils.from_wei(raw_main_balance, "ether"))
+            main_balance = _cached_main_balance
+        else:
+            main_balance = decimal.Decimal(eth_utils.from_wei(raw_main_balance, "ether"))
 
         tokens_balance_info = {}
         for token_address in self.contracts.keys():
+            token_address = token_address.lower()
             try:
                 erc_balance = provider_manager.get_balance(
                     chain_code,
-                    checksum_address,
+                    address,
                     token_address=token_address
                 )
             except Exception:
@@ -283,11 +286,11 @@ class Abstract_Eth_Wallet(abc.ABC):
                     "Failed to get balance for token %s of chain %s address %s",
                     token_address,
                     chain_code,
-                    checksum_address
+                    address
                 )
-                erc_balance = 0
+                erc_balance = _cached_erc_balances.get(token_address) or 0
 
-            tokens_balance_info[token_address.lower()] = erc_balance
+            tokens_balance_info[token_address] = erc_balance
 
         self._total_balance['balance_info'] = main_balance, tokens_balance_info
         self._total_balance['time'] = time.time()
