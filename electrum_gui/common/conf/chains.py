@@ -473,6 +473,7 @@ def get_added_chains(existing_chain_codes: Set[str]) -> List[Dict]:
             "chain_code": chain_code,
             "fee_coin": chain_settings["fee_coin"],
             "name": chain_settings["name"],
+            "shortname": chain_settings["shortname"],
             "chain_model": chain_settings["chain_model"],
             "curve": chain_settings["curve"],
             "chain_affinity": chain_settings["chain_affinity"],

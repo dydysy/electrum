@@ -3359,9 +3359,6 @@ class AndroidCommands(commands.Commands):
         xpub = self._get_xpub_by_name(name, wallet)
         self.wallet_context.remove_backup_info(xpub)
 
-    def _chain_code_to_chain_name(self, coin):
-        return f"{coin.upper()}" if "okt" != coin.lower() else "OEC"
-
     @api.api_entry()
     def create_hd_wallet(
         self, password, seed=None, passphrase="", purpose=84, strength=128, create_coin=json.dumps(["btc"])
@@ -3392,15 +3389,14 @@ class AndroidCommands(commands.Commands):
 
         create_coin_list = json.loads(create_coin)
         for coin in create_coin_list:
-            chain_affinity = _get_chain_affinity(coin)
+            chain_info = coin_manager.get_chain_info(coin)
+            chain_affinity = chain_info.chain_affinity
             wallet_info = None
             if is_coin_migrated(coin):
-                chain_code = coin
-                chain_info = coin_manager.get_chain_info(chain_code)
                 last_hardened_level = chain_info.bip44_last_hardened_level
                 target_level = chain_info.bip44_target_level
                 wallet_info = self._create(
-                    coin.upper(),
+                    chain_info.shortname,
                     password,
                     seed=seed,
                     passphrase=passphrase,
@@ -3414,7 +3410,7 @@ class AndroidCommands(commands.Commands):
                 )
             elif chain_affinity == "btc":
                 wallet_info = self._create(
-                    coin.upper(),
+                    chain_info.shortname,
                     password,
                     seed=seed,
                     passphrase=passphrase,
@@ -3424,7 +3420,7 @@ class AndroidCommands(commands.Commands):
                 )
             elif chain_affinity == "eth":
                 wallet_info = self._create(
-                    self._chain_code_to_chain_name(coin),
+                    chain_info.shortname,
                     password,
                     seed=seed,
                     passphrase=passphrase,
@@ -4391,13 +4387,14 @@ class AndroidCommands(commands.Commands):
             raise e
         account_id = int(self._get_account_id(bip39_derivation, coin))
         purpose = int(helpers.get_path_info(bip39_derivation, PURPOSE_POS))
-        chain_affinity = _get_chain_affinity(coin)
+        chain_info = coin_manager.get_chain_info(coin)
+        chain_affinity = chain_info.chain_affinity
 
         if account_id == 0:
             if purpose == 49:
                 name = f"{coin.upper()}"
             elif chain_affinity == "eth":
-                name = self._chain_code_to_chain_name(coin)
+                name = chain_info.shortname
             else:
                 name = "btc-derived-%s" % purpose
         temp_path = helpers.get_temp_file()

@@ -18,6 +18,7 @@ class ChainInfo(DataClassMixin):
     chain_code: str  # unique chain coin
     fee_coin: str  # which coin is used to provide fee (omni chain uses btc, neo uses neo_gas etc.)
     name: str  # full name of chain, please keep the same with hardware wallet if supports hardware
+    shortname: str  # short name of chain
     chain_model: ChainModel  # model of chain (UTXO, Account etc.)
     curve: secret_data.CurveEnum  # curve type
     chain_affinity: str  # mark chain affinity
