@@ -2974,7 +2974,7 @@ class AndroidCommands(commands.Commands):
     @api.api_entry(api.Version.V2)
     def eth_ec_recover(self, coin: str, message: str, signature: str):
         chain_info = coin_manager.get_chain_info(coin)
-        require(chain_info.chain_affinity == codes.ETH)
+        require(chain_info.chain_affinity in (codes.ETH, codes.CFX))
         provider: Any = provider_manager.get_provider_by_chain(chain_info.chain_code)
         return provider.ec_recover(message, signature)
 
