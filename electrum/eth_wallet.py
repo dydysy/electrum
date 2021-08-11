@@ -54,8 +54,8 @@ from electrum import (
     util,
     wallet_db,
 )
+from electrum_gui.android import helpers
 from electrum_gui.common.basic import exceptions as basic_exceptions
-from electrum_gui.common.basic.functional import text as text_utils
 from electrum_gui.common.coin import manager as coin_manager
 from electrum_gui.common.provider import manager as provider_manager
 from electrum_gui.common.wallet import utils as wallet_utils
@@ -749,33 +749,12 @@ class Abstract_Eth_Wallet(abc.ABC):
         pass
 
     def sign_message(self, address: str, message: str, password: str = None):
-        if self.is_watching_only():
-            raise Exception("Watch-only wallet can't sign message")
-
-        if message.startswith("0x"):
-            message_bytes = bytes.fromhex(message[2:])
-        else:
-            message_bytes = message.encode()
-            preamble = f"\x19Ethereum Signed Message:\n{len(message_bytes)}"
-            message_bytes = preamble.encode() + message_bytes
-
-        message_hash = eth_utils.keccak(message_bytes)
-
-        if isinstance(self.keystore, keystore.Hardware_KeyStore):
-            address_path = self.get_derivation_path(address)
-            signature = self.keystore.sign_eth_message(address_path, message).hex()
-        elif isinstance(self, (Standard_Eth_Wallet, Imported_Eth_Wallet)):
-            signature = eth_account.Account.signHash(
-                message_hash, self.get_account(address, password).privateKey
-            ).signature.hex()
-        else:
-            raise Exception("Illegal Exception")
-
-        return eth_utils.add_0x_prefix(text_utils.force_text(signature))
+        signer = helpers.EthSoftwareSigner(self, password)
+        return provider_manager.sign_message(self.coin, message, signer)
 
     def verify_message(self, address, message, sig):
-        sig = bytes.fromhex(eth_utils.remove_0x_prefix(sig))
-        return self.keystore.verify_eth_message(address, message, sig)
+        address = provider_manager.verify_address(self.coin, address).normalized_address
+        return provider_manager.verify_message(self.coin, address, message, sig)
 
     def decrypt_message(self, pubkey: str, message, password) -> bytes:
         addr = self.pubkeys_to_address([pubkey])

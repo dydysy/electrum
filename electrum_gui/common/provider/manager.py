@@ -207,3 +207,17 @@ def hardware_verify_message(
 ) -> bool:
     provider, hardware_client = _ensure_provider_and_hardware_client(chain_code, hardware_device_path)
     return provider.hardware_verify_message(hardware_client, address, message, signature)
+
+
+def sign_message(chain_code: str, message: str, signer: secret_interfaces.SignerInterface) -> str:
+    provider: interfaces.MessageSupportingMixin = _require_special_provider(
+        chain_code, interfaces.MessageSupportingMixin
+    )
+    return provider.sign_message(message, signer)
+
+
+def verify_message(chain_code: str, address: str, message: str, signature: str) -> bool:
+    provider: interfaces.MessageSupportingMixin = _require_special_provider(
+        chain_code, interfaces.MessageSupportingMixin
+    )
+    return provider.verify_message(address, message, signature)

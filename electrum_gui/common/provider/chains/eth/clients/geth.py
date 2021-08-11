@@ -2,12 +2,11 @@ import functools
 import time
 from typing import Any, List, Optional, Tuple, Union
 
-import eth_utils
-
 from electrum_gui.common.basic.functional.require import require
 from electrum_gui.common.basic.request.exceptions import JsonRPCException
 from electrum_gui.common.basic.request.json_rpc import JsonRPCRequest
-from electrum_gui.common.provider.chains.eth.clients import utils
+from electrum_gui.common.provider.chains.eth.clients import helper
+from electrum_gui.common.provider.chains.eth.sdk import utils
 from electrum_gui.common.provider.data import (
     Address,
     BlockHeader,
@@ -168,7 +167,7 @@ class Geth(ClientInterface, BatchGetAddressMixin):
             json_response = e.json_response
             if isinstance(json_response, dict) and "error" in json_response:
                 error_message = json_response.get("error", {}).get("message") or ""
-                return utils.handle_broadcast_error(error_message)
+                helper.raise_broadcast_error(error_message)
 
             raise e
 
@@ -200,18 +199,18 @@ class Geth(ClientInterface, BatchGetAddressMixin):
 
     def get_contract_code(self, address: str) -> str:
         resp = self.rpc.call("eth_getCode", params=[address, self.__LAST_BLOCK__])
-        return eth_utils.remove_0x_prefix(resp)
+        return utils.remove_0x_prefix(resp)
 
     @functools.lru_cache
     def is_contract(self, address: str) -> bool:
         return len(self.get_contract_code(address)) > 0
 
     def get_token_info_by_address(self, token_address: str) -> Tuple[str, str, int]:
-        # >>> eth_utils.keccak("symbol()".encode())[:4].hex()
+        # >>> utils.keccak("symbol()".encode())[:4].hex()
         # '95d89b41'
-        # >>> eth_utils.keccak("name()".encode())[:4].hex()
+        # >>> utils.keccak("name()".encode())[:4].hex()
         # '06fdde03'
-        # >>> eth_utils.keccak("decimals()".encode())[:4].hex()
+        # >>> utils.keccak("decimals()".encode())[:4].hex()
         # '313ce567'
         symbol_resp, name_resp, decimals_resp = self.call_contract(
             token_address, ["0x95d89b41", "0x06fdde03", "0x313ce567"]

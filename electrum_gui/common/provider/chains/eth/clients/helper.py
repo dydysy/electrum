@@ -10,8 +10,7 @@ _MAPPING = {
 }
 
 
-def handle_broadcast_error(error_message: str) -> None:
-
+def raise_broadcast_error(error_message: str) -> None:
     for keywords, exception_class in _MAPPING.items():
         if keywords in error_message:
             break

@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from electrum_gui.common.basic.request.exceptions import RequestException
 from electrum_gui.common.basic.request.restful import RestfulRequest
-from electrum_gui.common.provider.chains.eth.clients import utils
+from electrum_gui.common.provider.chains.eth.clients import helper
 from electrum_gui.common.provider.data import (
     Address,
     BlockHeader,
@@ -189,7 +189,7 @@ class Etherscan(ClientInterface, SearchTransactionMixin):
         if txid:
             return TxBroadcastReceipt(is_success=True, receipt_code=TxBroadcastReceiptCode.SUCCESS, txid=txid)
         else:
-            return utils.handle_broadcast_error(resp.get("error", {}).get("message") or "")
+            helper.raise_broadcast_error(resp.get("error", {}).get("message") or "")
 
     def get_prices_per_unit_of_fee(self) -> PricesPerUnit:
         try:

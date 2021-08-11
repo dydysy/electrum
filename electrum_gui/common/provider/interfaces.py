@@ -250,3 +250,13 @@ class HardwareSupportingMixin(abc.ABC):
         signature: str,
     ) -> bool:
         pass
+
+
+class MessageSupportingMixin(abc.ABC):
+    @abc.abstractmethod
+    def sign_message(self, message: str, signer: secret_interfaces.SignerInterface) -> str:
+        pass
+
+    @abc.abstractmethod
+    def verify_message(self, address: str, message: str, signature: str) -> bool:
+        pass

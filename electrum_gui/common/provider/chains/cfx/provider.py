@@ -8,13 +8,14 @@ from electrum_gui.common.provider.chains.cfx.conflux import CFXClient
 from electrum_gui.common.provider.chains.cfx.sdk import cfx_account
 from electrum_gui.common.provider.chains.cfx.sdk.cfx_address import Address
 from electrum_gui.common.provider.chains.cfx.sdk.cfx_address import utils as cfx_utils
+from electrum_gui.common.provider.chains.eth.message_mixin import ETHMessageMixin
 from electrum_gui.common.provider.chains.eth.provider import _EthKey
 from electrum_gui.common.provider.data import AddressValidation, SignedTx, UnsignedTx
 from electrum_gui.common.provider.interfaces import ProviderInterface
 from electrum_gui.common.secret.interfaces import SignerInterface, VerifierInterface
 
 
-class CFXProvider(ProviderInterface):
+class CFXProvider(ProviderInterface, ETHMessageMixin):
     @property
     def client(self) -> CFXClient:
         return self.client_selector(instance_required=CFXClient)

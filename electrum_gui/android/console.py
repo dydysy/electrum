@@ -2417,7 +2417,7 @@ class AndroidCommands(commands.Commands):
         :return: true/false as bool
         """
         address = address.strip()
-        message = message.strip().encode("utf-8")
+        message = message.strip()
         chain_affinity = _get_chain_affinity(coin)
         if chain_affinity == "btc":
             if not bitcoin.is_address(address):
@@ -2434,7 +2434,10 @@ class AndroidCommands(commands.Commands):
                 verified = provider_manager.hardware_verify_message(coin, path, address, message, signature)
             else:
                 verified = self.wallet.verify_message(address, message, signature)
-        except Exception:
+        except Exception as e:
+            log_info.exception(
+                f"Failed to verify message. address: {address}, message: {message}, signature: {signature}, error: {e}"
+            )
             verified = False
 
         return verified
@@ -2867,8 +2870,8 @@ class AndroidCommands(commands.Commands):
             chain_code=chain_code,
             coin_code=coin.code,
             value=Decimal(value),
-            from_address=unsigned_tx.inputs[0].address,
-            to_address=unsigned_tx.outputs[0].address,
+            from_address=unsigned_tx.inputs[0].address.lower(),
+            to_address=unsigned_tx.outputs[0].address.lower(),
             fee_limit=Decimal(unsigned_tx.fee_limit),
             fee_price_per_unit=unsigned_tx.fee_price_per_unit,
             nonce=-1 if unsigned_tx.nonce is None else unsigned_tx.nonce,
@@ -2967,6 +2970,13 @@ class AndroidCommands(commands.Commands):
             )
 
         return txid if has_broadcasted else None
+
+    @api.api_entry(api.Version.V2)
+    def eth_ec_recover(self, coin: str, message: str, signature: str):
+        chain_info = coin_manager.get_chain_info(coin)
+        require(chain_info.chain_affinity in (codes.ETH, codes.CFX))
+        provider: Any = provider_manager.get_provider_by_chain(chain_info.chain_code)
+        return provider.ec_recover(message, signature)
 
     @api.api_entry()
     def dapp_eth_rpc_info(self):

@@ -59,7 +59,7 @@ class BaseECDSAKey(KeyInterface, ABC):
         digest_as_number = ecdsa.util.string_to_number(digest)
         for recid in range(4):
             try:
-                candidate = self._recover_public_key(digest_as_number, r, s, recid, self.curve)
+                candidate = self.recover_public_key(digest_as_number, r, s, recid)
                 if candidate == self.get_pubkey() and self.__class__(pubkey=candidate).verify(digest, signature):
                     return recid
             except Exception as e:
@@ -67,8 +67,9 @@ class BaseECDSAKey(KeyInterface, ABC):
 
         raise Exception("No recid fits")
 
-    @staticmethod
-    def _recover_public_key(digest: int, r: int, s: int, recid: int, curve: ecdsa.curves.Curve) -> bytes:
+    @classmethod
+    def recover_public_key(cls, digest: int, r: int, s: int, recid: int) -> bytes:
+        curve = cls.curve
         curve_fp = curve.curve
         n = curve.order
         e = digest

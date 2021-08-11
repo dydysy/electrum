@@ -8,7 +8,7 @@ from electrum_gui.common.basic.functional.require import require
 from electrum_gui.common.basic.functional.text import force_text
 from electrum_gui.common.basic.request.exceptions import RequestException, ResponseException
 from electrum_gui.common.basic.request.restful import RestfulRequest
-from electrum_gui.common.provider.chains.eth.clients import utils
+from electrum_gui.common.provider.chains.eth.clients import helper
 from electrum_gui.common.provider.data import (
     Address,
     BlockHeader,
@@ -222,7 +222,7 @@ class BlockBook(ClientInterface, SearchTransactionMixin):
         if txid:
             return TxBroadcastReceipt(is_success=True, receipt_code=TxBroadcastReceiptCode.SUCCESS, txid=txid)
         else:
-            return utils.handle_broadcast_error(resp.get("error") or "")
+            helper.raise_broadcast_error(resp.get("error") or "")
 
     def get_prices_per_unit_of_fee(self) -> PricesPerUnit:
         num_of_block = 10  # just a number, trezor does case what it is
