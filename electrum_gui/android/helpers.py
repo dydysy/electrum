@@ -53,6 +53,7 @@ class EthSoftwareSigner(secret_interfaces.SignerInterface):
 
     def sign(self, digest: bytes) -> Tuple[bytes, int]:
         signature = self.prvkey.sign_msg_hash(digest)
-        sig = eth_utils.int_to_big_endian(signature.r) + eth_utils.int_to_big_endian(signature.s)
+        sig = eth_utils.int_to_big_endian(signature.r).rjust(32, bytes(1))
+        sig += eth_utils.int_to_big_endian(signature.s).rjust(32, bytes(1))
         rec_id = signature.v
         return sig, rec_id

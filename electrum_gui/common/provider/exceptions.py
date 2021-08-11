@@ -54,5 +54,5 @@ class FailedToGetGasPrices(Exception):
 class InsufficientBalance(exceptions.OneKeyException):
     key = "msg__insufficient_balance"
 
-    def __init__(self):
+    def __init__(self, _message: str):
         super(InsufficientBalance, self).__init__("Insufficient funds")
