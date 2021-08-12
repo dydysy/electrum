@@ -3791,9 +3791,7 @@ class AndroidCommands(commands.Commands):
                     self.config,
                     seed,
                     passphrase,
-                    PURPOSE_TO_ADDRESS_TYPE.get(
-                        int(helpers.get_path_info(bip39_derivation, PURPOSE_POS)), "p2wpkh-p2sh"
-                    ),
+                    int(helpers.get_path_info(bip39_derivation, PURPOSE_POS)) or 49,
                     bip39_derivation,
                 )
             elif chain_affinity == "eth":
