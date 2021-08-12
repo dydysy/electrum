@@ -3055,9 +3055,6 @@ class AndroidCommands(commands.Commands):
         :param path: NFC/android_usb/bluetooth as str
         :return:1/except
         """
-        if settings.IS_DEV and coin == "tbtc":
-            coin = "btc"  # Workaround for tbtc, trezor plugin only checks whether coin is "btc".
-
         bip44_path = self.wallet.get_derivation_path(address)
         provider_manager.hardware_get_address(coin, path, bip44_path, confirm_on_device=True)
         return "1"
