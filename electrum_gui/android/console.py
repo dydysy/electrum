@@ -2667,8 +2667,7 @@ class AndroidCommands(commands.Commands):
                 {"status": 0, "info": "0x095ea7b3000000000000000000000000514910771af9ca656af840dff83e8264ecf986ca0000000000000000000000000000000000000000000000000000000000000001"}
 
         """
-        coin = self.wallet.coin
-        if coin == codes.CFX:
+        if _get_chain_affinity(self.wallet.coin) == "cfx":
             from electrum_gui.common.provider.chains.cfx.sdk import cfx_address
 
             spender_address = cfx_address.Address.decode_hex_address(base32_address=spender_address)
@@ -2676,7 +2675,7 @@ class AndroidCommands(commands.Commands):
 
     def _get_action_result(self, coin: str, contract_address: str, data: str) -> str:
         chain_code = coin
-        if coin == codes.CFX:
+        if _get_chain_affinity(chain_code) == "cfx":
             client = provider_manager.get_client_by_chain(chain_code)
             out = client.cfx_call({"to": contract_address, "data": data})
         else:
@@ -2702,7 +2701,7 @@ class AndroidCommands(commands.Commands):
             return data:
                 {"status": 0, "info": "0"}
         """
-        if coin == codes.CFX:
+        if _get_chain_affinity(coin) == "cfx":
             from electrum_gui.common.provider.chains.cfx.sdk import cfx_address
 
             spender_address = cfx_address.Address.decode_hex_address(base32_address=spender_address)
@@ -2724,7 +2723,7 @@ class AndroidCommands(commands.Commands):
             return data:
                 {"status": 0, "info": "0"}
         """
-        if coin == codes.CFX:
+        if _get_chain_affinity(coin) == "cfx":
             from electrum_gui.common.provider.chains.cfx.sdk import cfx_address
 
             owner_address = cfx_address.Address.decode_hex_address(base32_address=owner_address)
@@ -2905,14 +2904,14 @@ class AndroidCommands(commands.Commands):
     ):
         transaction = json.loads(transaction)
         current_address = self.wallet.get_addresses()[0]
-        coin = self.wallet.coin
+        chain_affinity = _get_chain_affinity(self.wallet.coin)
 
         if transaction.get("from") and transaction["from"].lower() != current_address.lower():
             raise Exception(f"current wallet address is {current_address}, not {transaction['from']}")
 
         if not transaction.get("to"):
             raise Exception("'to' address not found")
-        if coin == codes.CFX:
+        if chain_affinity == "cfx":
             gas_price = transaction.get("gasPrice")
         else:
             gas_price = eth_utils.from_wei(transaction["gasPrice"], "gwei") if transaction.get("gasPrice") else None
@@ -2927,7 +2926,7 @@ class AndroidCommands(commands.Commands):
             password=password,
             auto_send_tx=False,
         )
-        if coin == codes.CFX:
+        if chain_affinity == "cfx":
             from electrum_gui.common.provider.chains.cfx.sdk import cfx_account
 
             signed_tx = cfx_account.Transaction.from_bytes(bytes.fromhex(signed_tx_hex[2:]))
@@ -2948,11 +2947,10 @@ class AndroidCommands(commands.Commands):
                 "hash": signed_tx.hash().hex(),
             },
         }
-        if coin == codes.CFX:
+        if chain_affinity == "cfx":
             from electrum_gui.common.provider.chains.cfx.sdk import cfx_address
 
-            chain_code = self.wallet.coin
-            chain_id = int(coin_manager.get_chain_info(chain_code).chain_id)
+            chain_id = int(coin_manager.get_chain_info(self.wallet.coin).chain_id)
             signed_tx_info["tx"].update(
                 {
                     "to": cfx_address.Address.encode_hex_address(
