@@ -8,7 +8,7 @@ class IOSCallback(base.BaseCallback):
         from rubicon.objc import ObjCClass
 
         self.ios_handler = require_not_none(
-            ObjCClass("OKBlueManager").sharedInstance().getNotificationCenter(),
+            ObjCClass("OKHwNotiManager").sharedInstance().getNotificationCenter(),
             "Failed to init NotificationCenter for iOS",
         )
 
