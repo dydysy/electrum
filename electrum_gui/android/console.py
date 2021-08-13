@@ -65,7 +65,7 @@ from electrum.util import (
     format_time,
 )
 from electrum.util import user_dir as get_dir
-from electrum.wallet import Imported_Wallet, Standard_Wallet, Wallet
+from electrum.wallet import Customer_Wallet, Imported_Wallet, Standard_Wallet, Wallet
 from electrum.wallet_db import WalletDB
 from electrum_gui.android import hardware, helpers, wallet_context
 from electrum_gui.common import the_begging
@@ -505,7 +505,13 @@ class AndroidCommands(commands.Commands):
             if is_coin_migrated(coin):
                 wallet = GeneralWallet(db, storage, self.config)
             elif chain_affinity == "btc":
-                wallet = Wallet(db, storage, config=self.config)
+                if "customer_standard" in wallet_type:
+                    [change_pos, index_pos] = db.data.get("address_index", [0, 0])
+                    wallet = Customer_Wallet(
+                        db, storage, config=self.config, change_pos=change_pos, index_pos=index_pos
+                    )
+                else:
+                    wallet = Wallet(db, storage, config=self.config)
                 wallet.start_network(self.network)
             elif chain_affinity == "eth":
                 if (
@@ -561,7 +567,7 @@ class AndroidCommands(commands.Commands):
         self.callbackIntent = callbackIntent
 
     @api.api_entry()  # TODO: Currently not used
-    def set_multi_wallet_info(self, name, m, n):
+    def set_multi_wallet_info(self, name, m, n, is_customer=False):
         try:
             self._assert_daemon_running()
         except Exception as e:
@@ -570,7 +576,7 @@ class AndroidCommands(commands.Commands):
             self.wizard = None
         self.wizard = MutiBase.MutiBase(self.config)
         path = self._wallet_path(name)
-        self.wizard.set_multi_wallet_info(path, m, n)
+        self.wizard.set_multi_wallet_info(path, m, n, is_customer=is_customer)
         self.m = m
         self.n = n
 
@@ -688,36 +694,46 @@ class AndroidCommands(commands.Commands):
         out = self._get_create_info_by_json(wallet_info=wallet_info)
         return json.dumps(out)
 
-    def _create_customer_wallet(self, name, xpubs, coin="btc") -> str:
+    def _create_btc_hw_customer_wallet(self, name, m, n, xpubs_list, hide_type, coin):
+        self.set_multi_wallet_info(name, m, n, is_customer=True)
+        full_path = self.hw_info.get("bip39_derivation")
+        derivation = (
+            bip44.BIP44Path.from_bip44_path(full_path).to_target_level(bip44.BIP44Level.ACCOUNT).to_bip44_path()
+        )
+
+        for xpub_info in xpubs_list:
+            self.add_xpub(xpub_info[0], xpub_info[1], derivation)
+        return self._create_multi_wallet(
+            name, hide_type=hide_type, coin=coin, index=self.hw_info.get("account_id", 0), customer_path=full_path
+        )
+
+    def _create_hw_standard_wallet(self, name, m, n, xpubs_list, hide_type, coin):
+        self.set_multi_wallet_info(name, m, n)
+        derivation = self._get_hw_derivation(
+            account_id=self.hw_info["account_id"], type=self.hw_info["type"], coin=coin
+        )
+
+        for xpub_info in xpubs_list:
+            if len(xpub_info) == 2:
+                self.add_xpub(xpub_info[0], xpub_info[1], derivation)
+            else:
+                self.add_xpub(xpub_info, derivation=derivation)
+        return self._create_multi_wallet(name, hide_type=hide_type, coin=coin, index=self.hw_info.get("account_id", 0))
+
+    def _create_eth_hw_customer_wallet(self, name, xpubs, coin) -> str:
         try:
             self._assert_daemon_running()
         except Exception as e:
             raise BaseException(e)
 
-        chain_affinity = _get_chain_affinity(coin)
-
-        if chain_affinity == "btc":
-            wallet = Imported_Wallet.from_xpub(
-                coin,
-                self.config,
-                xpubs[0][0],
-                PURPOSE_TO_ADDRESS_TYPE.get(
-                    int(helpers.get_path_info(self.hw_info["bip39_derivation"], PURPOSE_POS)) or "p2wpkh-p2sh"
-                ),
-                self.hw_info["bip39_derivation"],
-                xpubs[0][1],
-                hw=True,
-            )
-            wallet_type = "%s-hw-derived-customer-%s-%s" % ("btc", self.m, self.n)
-        elif chain_affinity == "eth":
-            wallet = Imported_Eth_Wallet.from_xpub(
-                coin, self.config, xpubs[0][0], self.hw_info["bip39_derivation"], xpubs[0][1], hw=True
-            )
-            wallet_type = "%s-hw-derived-customer" % coin
+        wallet = Imported_Eth_Wallet.from_xpub(
+            coin, self.config, xpubs[0][0], self.hw_info["bip39_derivation"], xpubs[0][1], hw=True
+        )
+        wallet_type = "%s-hw-derived-customer" % coin
 
         return self._base_create_wallet(name, wallet, coin, wallet_type), wallet
 
-    def _create_multi_wallet(self, name, hd=False, hide_type=False, coin="btc", index=0):
+    def _create_multi_wallet(self, name, hide_type=False, coin="btc", index=0, customer_path=None):
         try:
             self._assert_daemon_running()
             self._assert_wizard_isvalid()
@@ -730,9 +746,17 @@ class AndroidCommands(commands.Commands):
         if storage:
             chain_affinity = _get_chain_affinity(coin)
             if chain_affinity == "btc":
-                wallet = Wallet(db, storage, config=self.config)
-                wallet.set_derived_master_xpub(self.hw_info["xpub"])
-                wallet_type = "%s-hw-derived-%s-%s" % (coin, self.m, self.n)
+                if customer_path is not None:
+                    change_pos = helpers.get_path_info(customer_path, 4)
+                    index_pos = helpers.get_path_info(customer_path, 5)
+                    wallet = Customer_Wallet(
+                        db, storage, config=self.config, change_pos=change_pos, index_pos=index_pos
+                    )
+                    wallet_type = "%s-hw-derived-customer-1-1" % coin
+                else:
+                    wallet = Wallet(db, storage, config=self.config)
+                    wallet.set_derived_master_xpub(self.hw_info["xpub"])
+                    wallet_type = "%s-hw-derived-%s-%s" % (coin, self.m, self.n)
             elif chain_affinity == "eth":
                 wallet = Standard_Eth_Wallet(db, storage, config=self.config, index=index)
                 wallet_type = "%s-hw-derived" % coin
@@ -830,23 +854,14 @@ class AndroidCommands(commands.Commands):
                 wallet = GeneralWallet.from_hardware(name, coin, self.config, path, xpubs_list[0][0])
                 wallet_type = wallet.db.get("wallet_type")
                 wallet_info = self._base_create_wallet(name, wallet, coin, wallet_type)
-        elif self.hw_info.get("bip39_derivation"):
-            path = self.hw_info.get("bip39_derivation")
-            wallet_info, wallet = self._create_customer_wallet(name, xpubs_list, coin=coin)
+        elif self.hw_info.get("bip39_derivation") and _get_chain_affinity(coin) == "eth":
+            wallet_info, wallet = self._create_eth_hw_customer_wallet(name, xpubs_list, coin)
+        elif (
+            self.hw_info.get("bip39_derivation") and _get_chain_affinity(coin) == "btc"
+        ):  # create btc hw comstomer wallet:
+            wallet_info, wallet = self._create_btc_hw_customer_wallet(name, m, n, xpubs_list, hide_type, coin)
         else:
-            self.set_multi_wallet_info(name, m, n)
-            derivation = self._get_hw_derivation(
-                account_id=self.hw_info["account_id"], type=self.hw_info["type"], coin=coin
-            )
-
-            for xpub_info in xpubs_list:
-                if len(xpub_info) == 2:
-                    self.add_xpub(xpub_info[0], xpub_info[1], derivation)
-                else:
-                    self.add_xpub(xpub_info, derivation=derivation)
-            wallet_info, wallet = self._create_multi_wallet(
-                name, hd=hd, hide_type=hide_type, coin=coin, index=self.hw_info["account_id"]
-            )
+            wallet_info, wallet = self._create_hw_standard_wallet(name, m, n, xpubs_list, hide_type, coin)
         customised_path_is_default_path = wallet.check_customer_and_default_path()
         derivation_path = wallet.get_derivation_path(wallet.get_addresses()[0])
         if len(self.hw_info) != 0 and customised_path_is_default_path:
@@ -1482,7 +1497,7 @@ class AndroidCommands(commands.Commands):
             s = 0
             r = len(self.wallet.get_keystores())
         else:
-            if self.wallet.wallet_type == "standard" or self.wallet.wallet_type == "imported":
+            if self.wallet.wallet_type in {"standard", "imported", "customer_standard"}:
                 s = r = len(self.wallet.get_keystores())
             else:
                 s, r = self.wallet.wallet_type.split("of", 1)
@@ -2058,9 +2073,10 @@ class AndroidCommands(commands.Commands):
             self.show_addr = self.wallet.get_addresses()[0]
         if next:
             addr = self.wallet.create_new_address(False)
-            self.show_addr = addr
-            show_addr_info[self.wallet.__str__()] = self.show_addr
-            self.config.set_key("show_addr_info", show_addr_info)
+            if addr is not None:
+                self.show_addr = addr
+                show_addr_info[self.wallet.__str__()] = self.show_addr
+                self.config.set_key("show_addr_info", show_addr_info)
         data_json = {}
         data_json["qr_data"] = self.show_addr
         data_json["addr"] = self.show_addr
@@ -2753,7 +2769,7 @@ class AndroidCommands(commands.Commands):
         xtype = bip32.xpub_type(xpub)
         client_xpub = (
             self.trezor_manager.get_xpub(coin, hardware_device_path, bip44_path, xtype, False)
-            if coin == "btc"
+            if coin in ("btc", "tbtc")
             else self.trezor_manager.get_eth_xpub(coin, hardware_device_path, bip44_path)
         )
         if client_xpub != xpub:
@@ -3123,6 +3139,11 @@ class AndroidCommands(commands.Commands):
         else:
             self.hw_info["bip39_derivation"] = bip39_derivation
             if chain_affinity == "btc":
+                bip39_derivation = (
+                    bip44.BIP44Path.from_bip44_path(bip39_derivation)
+                    .to_target_level(bip44.BIP44Level.ACCOUNT)
+                    .to_bip44_path()
+                )
                 xpub = self.trezor_manager.get_xpub(coin, path, bip39_derivation, _type, is_creating)
             elif chain_affinity == "eth":
                 xpub = self.trezor_manager.get_eth_xpub(coin, path, bip39_derivation)
@@ -3770,9 +3791,7 @@ class AndroidCommands(commands.Commands):
                     self.config,
                     seed,
                     passphrase,
-                    PURPOSE_TO_ADDRESS_TYPE.get(
-                        int(helpers.get_path_info(bip39_derivation, PURPOSE_POS)), "p2wpkh-p2sh"
-                    ),
+                    int(helpers.get_path_info(bip39_derivation, PURPOSE_POS)) or 49,
                     bip39_derivation,
                 )
             elif chain_affinity == "eth":

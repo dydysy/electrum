@@ -2308,18 +2308,18 @@ class Imported_Wallet(Simple_Wallet):
 
     @classmethod
     def _create_customer_wallet(cls, ks, config, coin, purpose):
-
-        def import_seed_to_address(pubkey: str, purpose: Optional[str]):
-            addr = bitcoin.pubkey_to_address(purpose, pubkey)
-            wallet.db.add_imported_address(addr, {'type': purpose, 'pubkey': ""})
-            wallet.add_address(addr)
+        pubkey = ks.get_pubkey_from_master_xpub().hex()
+        txin_type = _PURPOSE_TO_ADDRESS_TYPE.get(purpose, "p2wpkh-p2sh")
+        addr = bitcoin.pubkey_to_address(txin_type, pubkey)
 
         db = WalletDB("", manual_upgrades=False)
         db.put("keystore", ks.dump())
+
         wallet = cls(db, None, config=config)
         wallet.coin = coin
-        pubkey = ks.get_pubkey_from_master_xpub().hex()
-        import_seed_to_address(pubkey, purpose)
+
+        wallet.db.add_imported_address(addr, {"type": txin_type, "pubkey": pubkey})
+        wallet.add_address(addr)
         return wallet
 
     @classmethod
@@ -2390,10 +2390,23 @@ class Imported_Wallet(Simple_Wallet):
     def load_keystore(self):
         self.keystore = load_keystore(self.db, 'keystore') if self.db.get('keystore') else None
         if not isinstance(self.keystore, keystore.Imported_KeyStore):
+            # Imported wallet with standard keystore, for customized path wallets
+            def _get_pubkey_derivation(pubkey, _txin, *, only_der_suffix=True):
+                if pubkey == self.keystore.get_pubkey_from_master_xpub():
+                    return pubkey.hex()
+                else:
+                    return None
+
             try:
                 xtype = bip32.xpub_type(self.keystore.xpub)
             except:
                 xtype = 'standard'
+
+            # Simulate the behaviors of a imported keystore, make it able to sign messages
+            self.keystore.get_pubkey_derivation = _get_pubkey_derivation
+            self.keystore.get_private_key = lambda _pubkey, password: (
+                self.keystore.get_master_private_key_info(password), True
+            )
             self.txin_type = 'p2pkh' if xtype == 'standard' else xtype
 
     def save_keystore(self):
@@ -2841,6 +2854,50 @@ class Standard_Wallet(Simple_Deterministic_Wallet):
         deriv_suffix = self.get_address_index(address)
         return "%s/%d/%d" % (derivation, *deriv_suffix) if derivation is not None else ""
 
+class Customer_Wallet(Standard_Wallet):
+    wallet_type = 'customer_standard'
+
+    def __init__(self, db, storage, *, config, change_pos, index_pos):
+        self.change_pos = int(change_pos)
+        self.index_pos = int(index_pos)
+        Deterministic_Wallet.__init__(self, db, storage, config=config)
+        if self.db.get('address_index') is None:
+            self.set_address_index(self.change_pos, self.index_pos)
+
+    def set_address_index(self, change, index):
+        self.address_index = [change, index]
+        self.db.put("address_index", self.address_index)
+
+    @AddressSynchronizer.with_local_height_cached
+    def synchronize(self):
+        num_addr = self.db.num_receiving_addresses()
+        if num_addr < 1:
+            with self.lock:
+                address = self.derive_address(int(self.change_pos), self.index_pos)
+                self.db.add_customer_receiving_address(address, self.change_pos, self.index_pos)
+                self.set_address_index(self.change_pos, self.index_pos)
+                self.add_address(address)
+
+    def create_new_address(self, for_change: bool = False):
+        pass
+
+    @classmethod
+    def _from_keystore(cls, coin: str, config: SimpleConfig, keystore: KeyStore):
+        db = WalletDB("", manual_upgrades=False)
+        db.put("keystore", keystore.dump())
+        wallet = cls(db, None, config=config)
+        wallet.coin = coin
+        return wallet
+
+    def pubkeys_to_address(self, pubkeys):
+        pubkey = pubkeys[0]
+        return bitcoin.pubkey_to_address(self.txin_type, pubkey)
+
+    def get_derivation_path(self, address):
+        derivation = self.keystore.get_derivation_prefix()
+        deriv_suffix = self.get_address_index(address)
+        return "%s/%d/%d" % (derivation, *deriv_suffix) if derivation is not None else ""
+
 class Multisig_Wallet(Deterministic_Wallet):
     # generic m of n
 
@@ -2954,6 +3011,7 @@ def register_wallet_type(category):
 
 wallet_constructors = {
     'standard': Standard_Wallet,
+    'customer_standard': Customer_Wallet,
     'old': Standard_Wallet,
     'xpub': Standard_Wallet,
     'imported': Imported_Wallet
