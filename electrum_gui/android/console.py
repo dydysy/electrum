@@ -3189,6 +3189,7 @@ class AndroidCommands(commands.Commands):
         :coin: btc/eth as string
         :return: xpub as string
         """
+        self.hw_info.clear()
         if is_coin_migrated(coin):
             return self._get_xpub_from_hw(path=path, _type=_type, coin=coin, bip39_derivation=bip39_derivation)
 
