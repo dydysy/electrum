@@ -116,10 +116,11 @@ class CFXClient(ClientInterface, BatchGetAddressMixin):
             require(txid == tx.get("hash"))
 
         if receipt:
+            block_info = self.rpc.call("cfx_getBlockByHash", [receipt["blockHash"], False])
             block_header = BlockHeader(
                 block_hash=receipt.get("blockHash", ""),
                 block_number=_hex2int(receipt.get("epochNumber", "0x0")),
-                block_time=0,
+                block_time=_hex2int(block_info["timestamp"]),
             )
             status = (
                 TransactionStatus.CONFIRM_SUCCESS
