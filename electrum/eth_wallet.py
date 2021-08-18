@@ -248,7 +248,7 @@ class Abstract_Eth_Wallet(abc.ABC):
         return eth_keys.keys.PublicKey(bytes.fromhex(public_key)).to_checksum_address()
 
     def get_all_balance(self) -> Tuple[decimal.Decimal, Dict]:
-        _cached_main_balance = 0
+        _cached_main_balance = decimal.Decimal(0)
         _cached_erc_balances = {}
 
         if self._total_balance.get("time") is not None:
