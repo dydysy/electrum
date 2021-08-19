@@ -970,7 +970,6 @@ class Imported_Eth_Wallet(Simple_Eth_Wallet):
 
     def get_account(self, address, password):
         private_key = self.export_private_key(address, password)
-        print(f"get_account....{private_key}")
         return eth_account.Account.privateKeyToAccount(private_key)
 
     def export_keystore(self, address, password):

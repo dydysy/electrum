@@ -186,6 +186,34 @@ def _get_chain_affinity(chain_code):
     return chain_info.chain_affinity
 
 
+def _sol_retrieve_privkey_from_keypair(privkeys) -> bytes:
+    """Helper function to retrieve private key from keypair."""
+    if "[" in privkeys:
+        # assume bytearray(to be compatible with Sollet wallet)
+        try:
+            keypair = bytes(json.loads(privkeys))
+        except Exception as e:
+            raise basic_exceptions.PrivateKeyNotSupportedFormat(other_info=str(e))
+    else:
+        try:
+            # assume base58 encoded bytes as string(to be compatible with Phantom wallet)
+            keypair = base58.b58decode(privkeys)
+        except ValueError:
+            # maybe hex string
+            try:
+                keypair = bytes.fromhex(privkeys)
+            except Exception as e:
+                raise basic_exceptions.PrivateKeyNotSupportedFormat(other_info=str(e))
+    prvkey = keypair[:32]
+    pubkey = keypair[32:]
+    excepted_pubkey = secret_manager.raw_create_key_by_prvkey(CurveEnum.ED25519, prvkey).get_pubkey()
+    if pubkey != excepted_pubkey:
+        raise basic_exceptions.KeypairMismatchedError(
+            other_info="Invalid keypair with mismatch private key and pubkey key value"
+        )
+    return prvkey
+
+
 # Adds additional commands which aren't available over JSON RPC.
 class AndroidCommands(commands.Commands):
     _recovery_flag = True
@@ -3487,7 +3515,10 @@ class AndroidCommands(commands.Commands):
             if flag == "private":
                 data = eth_utils.remove_0x_prefix(data)
                 try:
-                    data = bytes.fromhex(data)
+                    if chain_affinity == codes.SOL:
+                        data = _sol_retrieve_privkey_from_keypair(data)
+                    else:
+                        data = bytes.fromhex(data)
                     secret_manager.verify_key(chain_info.curve, prvkey=data)
                 except ValueError:
                     raise basic_exceptions.UnavailablePrivateKey()
@@ -3702,30 +3733,7 @@ class AndroidCommands(commands.Commands):
                 wallet = GeneralWallet.from_keystore(name, coin, self.config, keystores, keystore_password, password)
             else:
                 if chain_affinity == codes.SOL:
-                    if "[" in privkeys:
-                        # assume bytearray(to be compatible with Sollet wallet)
-                        try:
-                            keypair = bytes(json.loads(privkeys))
-                        except Exception as e:
-                            raise basic_exceptions.PrivateKeyNotSupportedFormat(other_info=str(e))
-                    else:
-                        try:
-                            # assume base58 encoded bytes as string(to be compatible with Phantom wallet)
-                            keypair = base58.b58decode(privkeys)
-                        except ValueError:
-                            # maybe hex string
-                            try:
-                                keypair = bytes.fromhex(privkeys)
-                            except Exception as e:
-                                raise basic_exceptions.PrivateKeyNotSupportedFormat(other_info=str(e))
-                    prvkey = keypair[:32]
-                    pubkey = keypair[32:]
-                    excepted_pubkey = secret_manager.raw_create_key_by_prvkey(CurveEnum.ED25519, prvkey).get_pubkey()
-                    if pubkey != excepted_pubkey:
-                        raise basic_exceptions.KeypairMismatchedError(
-                            other_info="Invalid keypair with mismatch private key and pubkey key value"
-                        )
-                    privkeys = prvkey
+                    privkeys = _sol_retrieve_privkey_from_keypair(privkeys)
                 else:
                     try:
                         privkeys = bytes.fromhex(privkeys.split()[0])
