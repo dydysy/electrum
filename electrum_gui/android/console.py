@@ -347,13 +347,12 @@ class AndroidCommands(commands.Commands):
 
         coin = self.wallet.coin
         address = self.wallet.get_addresses()[0]
-        out = dict()
+        out = {"chaincode": coin}
 
         chain_affinity = _get_chain_affinity(coin)
-
         if is_coin_migrated(coin):
             main_balance_info, contracts_balance_info, sum_fiat = self._get_general_wallet_all_balance(self.wallet)
-            out = main_balance_info
+            out.update(main_balance_info)
             out["tokens"] = contracts_balance_info
             out["sum_fiat"] = f"{self.daemon.fx.ccy_amount_str(sum_fiat, True)} {self.ccy}"
             out["coin_asset"] = (
@@ -365,7 +364,7 @@ class AndroidCommands(commands.Commands):
             out["name"] = self.wallet.identity
         elif chain_affinity == "eth":  # eth base
             main_balance_info, contracts_balance_info, sum_fiat = self._get_eth_wallet_all_balance(self.wallet)
-            out = main_balance_info
+            out.update(main_balance_info)
             out["tokens"] = contracts_balance_info
             out["sum_fiat"] = f"{self.daemon.fx.ccy_amount_str(sum_fiat, True)} {self.ccy}"
             out["coin_asset"] = (
@@ -388,7 +387,7 @@ class AndroidCommands(commands.Commands):
             fiat_str = f"{self.daemon.fx.ccy_amount_str(fiat, True)} {self.ccy}"
 
             # main balance info
-            out["coin"] = self.wallet.coin
+            out["coin"] = coin
             out["address"] = address
             out["icon"] = self._get_icon_by_token(coin)
             out["balance"] = self.format_amount(balance)
@@ -404,7 +403,7 @@ class AndroidCommands(commands.Commands):
             if x:
                 out["unmatured"] = self.format_amount(x, is_diff=True).strip()
 
-        if out and self.callbackIntent is not None:
+        if "name" in out and self.callbackIntent is not None:
             self.callbackIntent.onCallback("update_status=%s" % json.dumps(out, cls=json_encoders.DecimalEncoder))
 
     @api.api_entry()  # TODO: Currently not used
