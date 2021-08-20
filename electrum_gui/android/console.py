@@ -2945,7 +2945,7 @@ class AndroidCommands(commands.Commands):
             gas_price = eth_utils.from_wei(transaction["gasPrice"], "gwei") if transaction.get("gasPrice") else None
         signed_tx_hex = self.sign_eth_tx(
             to_addr=transaction["to"],
-            value=eth_utils.from_wei(transaction["value"], "ether") if transaction.get("value") else 0,
+            value=eth_utils.from_wei(int(transaction["value"]), "ether") if transaction.get("value") else 0,
             gas_price=gas_price,
             gas_limit=transaction.get("gas"),
             data=transaction.get("data"),
