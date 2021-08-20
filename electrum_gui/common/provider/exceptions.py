@@ -56,3 +56,8 @@ class InsufficientBalance(exceptions.OneKeyException):
 
     def __init__(self, _message: str):
         super(InsufficientBalance, self).__init__("Insufficient funds")
+
+
+class FailedToGetSuggestedParams(Exception):
+    def __init__(self):
+        super(FailedToGetSuggestedParams, self).__init__("Failed to get suggested params.")

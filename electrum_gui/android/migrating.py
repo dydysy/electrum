@@ -15,7 +15,7 @@ from electrum_gui.common.wallet import manager as wallet_manager
 from electrum_gui.common.wallet.data import WalletType
 from electrum_gui.common.wallet.models import AccountModel
 
-MIGRATED_COINS: Set = {"sol", "tsol", "stc", "tstc", "cfx", "tcfx"}
+MIGRATED_COINS: Set = {"sol", "tsol", "stc", "tstc", "cfx", "tcfx", "algo", "talgo"}
 
 logger = logging.getLogger("app.migrating")
 
