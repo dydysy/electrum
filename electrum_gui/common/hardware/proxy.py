@@ -46,7 +46,6 @@ class HardwareProxyClient(interfaces.HardwareClientInterface):
     def __init__(self, device: trezor_transport.Transport, callback: interfaces.HardwareCallbackInterface):
         _force_release_old_session_as_need(device)
         self._client = trezor_client.TrezorClient(device, ui=callback)
-        self._is_migrating_applied = False
 
     def ensure_device(self):
         """
@@ -54,10 +53,7 @@ class HardwareProxyClient(interfaces.HardwareClientInterface):
         """
         _force_release_old_session_as_need(self._client.transport)
         self._client.init_device(new_session=True)
-
-        if not self._is_migrating_applied:
-            self._is_migrating_applied = True
-            self._apply_migrating_settings()
+        self._apply_migrating_settings()
 
     def _apply_migrating_settings(self):
         """

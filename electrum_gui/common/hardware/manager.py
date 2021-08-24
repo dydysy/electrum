@@ -68,7 +68,7 @@ def ping(hardware_device_path: str, message: str) -> str:
 
 
 def get_feature(hardware_device_path: str, force_refresh: bool = False) -> dict:
-    return get_client(hardware_device_path).get_feature(force_refresh)
+    return get_client(hardware_device_path, force_check=force_refresh).get_feature(force_refresh)
 
 
 def get_key_id(hardware_device_path: str) -> str:
