@@ -66,6 +66,24 @@ class STCProvider(ProviderInterface):
             encoding=encoding,
         )
 
+    def verify_token_address(self, address: str) -> AddressValidation:
+        normalized_address, is_valid, encoding = "", False, None
+        data = address.split("::", 4)
+        if len(data) == 3:
+            try:
+                addr = stc_utils.account_address_hex(address)
+            except stc_utils.InvalidAccountAddressError:
+                pass
+            else:
+                if len(addr) == 32:
+                    normalized_address, is_valid, encoding = address, True, "STC-TOKEN"
+        return AddressValidation(
+            normalized_address=normalized_address,
+            display_address=address if is_valid else "",
+            is_valid=is_valid,
+            encoding=encoding,
+        )
+
     def pubkey_to_address(self, verifier: VerifierInterface, encoding: str = None) -> str:
         require(encoding in ("HEX", "BECH32"))
         pubkey = verifier.get_pubkey(compressed=False)

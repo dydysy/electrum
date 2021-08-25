@@ -1707,7 +1707,7 @@ class AndroidCommands(commands.Commands):
         __, transfer_coin, fee_coin = coin_manager.get_related_coins(chain_code)
 
         if token_address:
-            token_address = provider_manager.verify_address(chain_code, token_address).normalized_address
+            token_address = provider_manager.verify_token_address(chain_code, token_address).normalized_address
             transfer_coin = coin_manager.get_coin_by_token_address(chain_code, token_address)
 
         start = start or 0
@@ -2585,7 +2585,7 @@ class AndroidCommands(commands.Commands):
             coin = self.wallet.coin if self.wallet is not None else "eth"
 
         chain_code = coin
-        contract_addr = provider_manager.verify_address(chain_code, contract_addr).normalized_address
+        contract_addr = provider_manager.verify_token_address(chain_code, contract_addr).normalized_address
 
         token_info = chains_config.get_token_info(chain_code, contract_addr)
         if token_info is not None:
@@ -3498,7 +3498,7 @@ class AndroidCommands(commands.Commands):
         """
         Verify legality for seed/private/public/address
         :param data: data as string
-        :param flag: seed/private/public/address/keystore as string
+        :param flag: seed/private/public/address/token_address/keystore as string
         :param coin: btc/eth as string
         :return: raise except if failed
         """
@@ -3531,6 +3531,11 @@ class AndroidCommands(commands.Commands):
                 validation = provider_manager.verify_address(chain_code, data)
                 if not validation.is_valid:
                     raise basic_exceptions.IncorrectAddress()
+            elif flag == "token_address":
+                validation = provider_manager.verify_token_address(chain_code, data)
+                if not validation.is_valid:
+                    raise basic_exceptions.IncorrectTokenAddress()
+
         elif chain_affinity == "btc":
             if flag == "private":
                 try:

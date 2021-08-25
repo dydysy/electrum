@@ -119,7 +119,7 @@ def add_coin(
     name: str = None,
     icon: str = None,
 ) -> str:
-    token_address = provider_manager.verify_address(chain_code, token_address).normalized_address
+    token_address = provider_manager.verify_token_address(chain_code, token_address).normalized_address
     coin_code = _generate_coin_code(chain_code, token_address, symbol)
 
     if coin_code in loader.COINS_DICT:
@@ -191,7 +191,7 @@ def get_coin_by_token_address(
     chain_code: str, token_address: str, add_if_missing: bool = False
 ) -> Optional[data.CoinInfo]:
     coin = None
-    token_address = provider_manager.verify_address(chain_code, token_address).normalized_address
+    token_address = provider_manager.verify_token_address(chain_code, token_address).normalized_address
     coins = query_coins_by_token_addresses(chain_code, [token_address])
 
     if coins:

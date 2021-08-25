@@ -161,6 +161,14 @@ class ProviderInterface(abc.ABC):
         :return: AddressValidation
         """
 
+    def verify_token_address(self, address: str) -> data.AddressValidation:
+        """
+        Check whether the token address can be recognized
+        :param address: address
+        :return: AddressValidation
+        """
+        return self.verify_address(address)
+
     @abc.abstractmethod
     def pubkey_to_address(self, verifier: secret_interfaces.VerifierInterface, encoding: str = None) -> str:
         """

@@ -97,6 +97,10 @@ def verify_address(chain_code: str, address: str) -> data.AddressValidation:
     return loader.get_provider_by_chain(chain_code).verify_address(address)
 
 
+def verify_token_address(chain_code: str, address: str) -> data.AddressValidation:
+    return loader.get_provider_by_chain(chain_code).verify_token_address(address)
+
+
 def pubkey_to_address(chain_code: str, verifier: secret_interfaces.VerifierInterface, encoding: str = None) -> str:
     return loader.get_provider_by_chain(chain_code).pubkey_to_address(verifier, encoding=encoding)
 

@@ -39,6 +39,10 @@ class IncorrectAddress(OneKeyException):
     key = "msg__incorrect_address"
 
 
+class IncorrectTokenAddress(OneKeyException):
+    key = "msg__incorrect_token_address"
+
+
 class InactiveAddress(OneKeyException):
     key = "msg__the_address_has_not_been_activated_please_enter_receipt_identifier"
 

@@ -27,6 +27,24 @@ class ALGOProvider(ProviderInterface):
             encoding=_encoding,
         )
 
+    def verify_token_address(self, address: str) -> AddressValidation:
+        _normalized_address, _display_address, _encoding = "", "", None
+        is_valid = False
+        try:
+            asset_id = int(address)
+        except ValueError:
+            pass
+        else:
+            if 0 <= asset_id < 2 ** 64:
+                is_valid = True
+                _normalized_address, _display_address, _encoding = address, address, "ASSET-ID"
+        return AddressValidation(
+            normalized_address=_normalized_address,
+            display_address=_display_address,
+            is_valid=is_valid,
+            encoding=_encoding,
+        )
+
     def pubkey_to_address(self, verifier: VerifierInterface, encoding: str = "BASE32") -> str:
         require(encoding == "BASE32")
         pubkey = verifier.get_pubkey(compressed=False)
