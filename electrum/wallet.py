@@ -2389,7 +2389,10 @@ class Imported_Wallet(Simple_Wallet):
 
     def load_keystore(self):
         self.keystore = load_keystore(self.db, 'keystore') if self.db.get('keystore') else None
-        if not isinstance(self.keystore, keystore.Imported_KeyStore):
+
+        if self.keystore is None:
+            self.txin_type = "p2pkh"
+        elif not isinstance(self.keystore, keystore.Imported_KeyStore):
             # Imported wallet with standard keystore, for customized path wallets
             def _get_pubkey_derivation(pubkey, _txin, *, only_der_suffix=True):
                 if pubkey == self.keystore.get_pubkey_from_master_xpub():
